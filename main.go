@@ -77,6 +77,9 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// reset file pointer to beginning of file so we can reuse it
+	tempFile.Seek(0, io.SeekStart)
+
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, tempFile); err != nil {
 		handleErr(err, r, w, "error hashing file", http.StatusInternalServerError)
