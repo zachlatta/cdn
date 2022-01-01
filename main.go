@@ -65,7 +65,7 @@ func root(w http.ResponseWriter, _ *http.Request) {
 }
 
 func upload(w http.ResponseWriter, r *http.Request) {
-	tempFile, err := os.CreateTemp(os.TempDir(), "upload-*")
+	tempFile, err := os.CreateTemp(destDir, "tmp-upload-*")
 	if err != nil {
 		handleErr(err, r, w, "error writing temporary file to disk", http.StatusInternalServerError)
 		return
