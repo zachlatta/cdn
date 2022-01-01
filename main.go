@@ -153,13 +153,16 @@ func firstN(s string, n int) string {
 	return s
 }
 
-// from https://stackoverflow.com/a/22467409
-func fileExists(name string) (bool, error) {
-	_, err := os.Stat(name)
+// from https://stackoverflow.com/a/10510783
+func fileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
 	if os.IsNotExist(err) {
 		return false, nil
 	}
-	return err != nil, err
+	return false, err
 }
 
 func inferFileExtension(path string) (string, error) {
