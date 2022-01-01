@@ -67,50 +67,55 @@ func root(w http.ResponseWriter, _ *http.Request) {
 func upload(w http.ResponseWriter, r *http.Request) {
 	tempFile, err := os.CreateTemp(os.TempDir(), "upload-*")
 	if err != nil {
-		http.Error(w, "error writing temporary file to disk", http.StatusInternalServerError)
+		handleErr(err, r, w, "error writing temporary file to disk", http.StatusInternalServerError)
 		return
 	}
 	defer os.Remove(tempFile.Name())
 
 	if _, err := io.Copy(tempFile, r.Body); err != nil {
-		http.Error(w, "error writing uploaded file to disk", http.StatusInternalServerError)
+		handleErr(err, r, w, "error writing uploaded file to disk", http.StatusInternalServerError)
 		return
 	}
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, tempFile); err != nil {
-		http.Error(w, "error hashing file", http.StatusInternalServerError)
+		handleErr(err, r, w, "error hashing file", http.StatusInternalServerError)
 		return
 	}
 
 	fileExt, err := inferFileExtension(tempFile.Name())
 	if err != nil || fileExt == "unknown" {
-		http.Error(w, "failed to infer file type", http.StatusBadRequest)
+		handleErr(err, r, w, "failed to infer file type", http.StatusBadRequest)
 		return
 	}
 
 	fileHash := hex.EncodeToString(hasher.Sum(nil))
 	fileName, err := shortestAvailableTruncatedFilename(2, destDir, fileHash, fileExt)
 	if err != nil {
-		http.Error(w, "error generating filename for uploaded file", http.StatusInternalServerError)
+		handleErr(err, r, w, "error generating filename for uploaded file", http.StatusInternalServerError)
 		return
 	}
 
 	destPath := filepath.Join(destDir, fileName)
 
 	if err := os.Rename(tempFile.Name(), destPath); err != nil {
-		http.Error(w, "error moving temporary file to FS_DEST_DIR", http.StatusInternalServerError)
+		handleErr(err, r, w, "error moving temporary file to FS_DEST_DIR", http.StatusInternalServerError)
 		return
 	}
 
 	fileURLRelative, err := url.Parse("./" + fileName)
 	if err != nil {
-		http.Error(w, "internal error constructing file URL", http.StatusInternalServerError)
+		handleErr(err, r, w, "internal error constructing file URL", http.StatusInternalServerError)
 		return
 	}
 	fileURL := baseURL.ResolveReference(fileURLRelative)
 
 	fmt.Fprintln(w, fileURL.String())
+}
+
+func handleErr(err error, r *http.Request, w http.ResponseWriter, userMsg string, statusCode int) {
+	http.Error(w, userMsg, statusCode)
+	log.Println("IP:", r.RemoteAddr, "Path:", r.URL.Path, "Error: '", userMsg, "-", err)
 }
 
 // find the shortest available truncation of nameToTruncate that doesn't
